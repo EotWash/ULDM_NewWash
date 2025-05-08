@@ -270,6 +270,7 @@ subplot(1,Rat,[1 Rat-1])
 ll=plot(longTim/3600/24, longAmp*1e18,'.',...
     [213 213],[-40 40],'k--', [420 420],[-40 40],'k--');
 hold on
+patch([275 384 384 275], [-20 -20 20 20], [.5 .7 .7], 'LineStyle', 'none', 'FaceAlpha', 0.5)
 text(195, 18, '0$^\circ$','Interpreter', 'latex','FontSize',16)
 text(235, 18, '180$^\circ$','Interpreter', 'latex','FontSize',16)
 text(390, 18, '180$^\circ$','Interpreter', 'latex','FontSize',16)
