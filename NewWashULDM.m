@@ -270,8 +270,6 @@ subplot(1,Rat,[1 Rat-1])
 ll=plot(longTim/3600/24, longAmp*1e18,'.',...
     [213 213],[-40 40],'k--', [420 420],[-40 40],'k--');
 hold on
-patch([275 384 384 275], [-20 -20 20 20], [.5 .7 .7], 'LineStyle', 'none', 'FaceAlpha', 0.5)
-text(282, 2, 'Hardware Failures','Interpreter', 'latex','FontSize',14)
 text(195, 18, '0$^\circ$','Interpreter', 'latex','FontSize',16)
 text(235, 18, '180$^\circ$','Interpreter', 'latex','FontSize',16)
 text(390, 18, '180$^\circ$','Interpreter', 'latex','FontSize',16)
@@ -301,9 +299,9 @@ mA = mF*0+2.753e-25;
 proj = min([mF*0+7e-27; sqrt((4e-27*sqrt(1e-3)*1./sqrt(mF)).^2+ (1e-26/1e-1*mF).^2)]);
 
 % Shading Calculation
-dmIndex = find(and(not(isnan(dmAmp)), f2M*dmFreqP>2.2e-21));
+dmIndex = find(and(not(isnan(dmAmp)), f2M*dmFreq>2.2e-21));
 dmAmpPlot = dmAmp(dmIndex)';
-dmFreqPlot = dmFreqP(dmIndex)';
+dmFreqPlot = dmFreq(dmIndex)';
 
 % LISA Pathfinder Limits Shading
 lIndex = find(f2M*fLISA<2.2e-17);
@@ -345,7 +343,6 @@ hold on
 bar(XU,(NU),'FaceAlpha',0.5)
 plot([4 4],[0 500],'k--','LineWidth',1.5)
 hold off
-% xlim([-4 4]*1e-25)
 xlabel('$\chi^2$ Relative to Thermal Noise','Interpreter', 'latex')
 ylabel('Number','Interpreter', 'latex')
 legend('Before Cuts','After Cuts','Threshold','Interpreter', 'latex')
