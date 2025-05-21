@@ -26,7 +26,7 @@ thresh = 4;
 
 %% Data loading
 
-if (true)
+if (false)
 
     % Runs to load. Once per turntable cosine amplitude, sine amplitude, 
     % and misfit are calculated in NewWashAnalysis.m then loaded here
@@ -160,7 +160,7 @@ thermCirc = thermAmp*(cos(thermPhi)+i*sin(thermPhi))+mean(torqFit);
 %% Fits
 
 % Dark matter search frequencies
-dmFreq = linspace(1/24/3600/lenDays*2,0.95*sampF/2,floor(0.95*sampF*24*3600*lenDays/2))';
+dmFreq = linspace(1/24/3600/lenDays*2,sampF*2,floor(0.95*sampF*24*3600*lenDays/2))';
 
 % Create vectors
 ampDMX = [];
@@ -270,7 +270,7 @@ subplot(1,Rat,[1 Rat-1])
 ll=plot(longTim/3600/24, longAmp*1e18,'.',...
     [213 213],[-40 40],'k--', [420 420],[-40 40],'k--');
 hold on
-patch([275 384 384 275], [-20 -20 20 20], [.5 .7 .7], 'LineStyle', 'none', 'FaceAlpha', 0.5)
+% patch([275 384 384 275], [-20 -20 20 20], [.5 .7 .7], 'LineStyle', 'none', 'FaceAlpha', 0.5)
 text(195, 18, '0$^\circ$','Interpreter', 'latex','FontSize',16)
 text(235, 18, '180$^\circ$','Interpreter', 'latex','FontSize',16)
 text(390, 18, '180$^\circ$','Interpreter', 'latex','FontSize',16)
@@ -295,42 +295,64 @@ set(gca,'XGrid','off','YGrid','on')
 %% Limits Plot
 
 % Microscope Limits
-mF = logspace(-7.5,-2.5);
+mF = logspace(-7.5,-2);
 mA = mF*0+2.753e-25;
 proj = min([mF*0+7e-27; sqrt((4e-27*sqrt(1e-3)*1./sqrt(mF)).^2+ (1e-26/1e-1*mF).^2)]);
 
 % Shading Calculation
-dmIndex = find(and(not(isnan(dmAmp)), f2M*dmFreq>2.2e-21));
+dmIndex = find(and(not(isnan(dmAmp)), f2M*dmFreq>2.2e-22));
 dmAmpPlot = dmAmp(dmIndex)';
 dmFreqPlot = dmFreq(dmIndex)';
 
 % LISA Pathfinder Limits Shading
-lIndex = find(f2M*fLISA<2.2e-17);
+lIndex = find(f2M*fLISA>1.52e-18);
 aLISAPlot = aLISA(lIndex)';
 fLISAPlot = fLISA(lIndex)';
 
+% Direct Detection Limits
+smth = movmean(dmAmp,500);
+dmAD = [smth(dmFreq<1.52e-18/f2M); aLISAPlot(fLISAPlot>1.52e-18/f2M)'];
+dmFreqD = [dmFreq(dmFreq<1.52e-18/f2M); fLISAPlot(fLISAPlot>1.52e-18/f2M)'];
+
 figure(2)
-set(gcf,'position',[500,200,1200,600])
-l=loglog(f2M*dmFreq, dmAmp, f2M*dmFreq, movmean(dmAmp,500),...    
-    f2M*mF, mA, '--', f2M*fDEP, aDEP, '--',[2.2e-21 2.2e-21],[1e-27 1e-24] ,'--', f2M*fLISA,aLISA,'--', ...
-    f2M*[1/24/3600 1/24/3600], [1e-28 1e-25],'k-.');
+set(gcf,'position',[300,100,1300,700])
+t = tiledlayout(1,1);
+ax2 = axes(t);
+patch([f2M*dmFreqD' fliplr(f2M*dmFreqD')], [dmAD' 1.1e-24*ones(size(dmAD'))], [.7 .7 .7], 'LineStyle', 'none', 'FaceAlpha', 0.5) 
+patch([[3.58e-22 2.2e-21] [2.2e-21 3.58e-22]], [8.6e-26 8.6e-26 1e-27 1e-27], [0.8 0.8 0.8], 'LineStyle', 'none', 'FaceAlpha', 0.2)
 hold on
-patch([f2M*mF fliplr(f2M*mF)], [mA 1e-24*ones(size(mA))], [.7 .7 .7], 'LineStyle', 'none', 'FaceAlpha', 0.5) 
-patch([f2M*fLISAPlot fliplr(f2M*fLISAPlot)], [aLISAPlot mean(mA)*ones(size(aLISAPlot))], [.7 .7 .7], 'LineStyle', 'none', 'FaceAlpha', 0.5)
-patch([f2M*dmFreqPlot fliplr(f2M*dmFreqPlot)], [dmAmpPlot mean(mA)*ones(size(dmAmpPlot))], [.7 .7 .7], 'LineStyle', 'none', 'FaceAlpha', 0.5)
-patch([[3.58e-22 1.79e-21 2.2e-21] [2.2e-21 1.79e-21 3.58e-22]], [2.753e-25 2.753e-25 2.753e-25 1e-27 1e-27 1e-27], [.7 .7 .7], 'LineStyle', 'none', 'FaceAlpha', 0.5)
-patch([[2.2e-21 2.2442e-21] [2.2442e-21 2.2e-21]], [2.753e-25 2.753e-25 9.23e-26 9.23e-26], [.7 .7 .7], 'LineStyle', 'none', 'FaceAlpha', 0.5)
+l = loglog(f2M*dmFreq, dmAmp); 
+lll = loglog(f2M*mF, mA, '--', f2M*fDEP, aDEP, '--',[2.2e-21 2.2e-21],[1e-27 1.1e-24] ,'--', f2M*fLISA,aLISA,'--');
+ll = loglog(f2M*dmFreqD, dmAD,'color',[0 0.28 0.47]);
+llll = loglog(f2M*[1/24/3600 1/24/3600], [1e-28 1.1e-25],'k-.');
+lllll = plot(f2M*[TTFreq TTFreq],[1e-24 1.1e-24],'k')
 text(3.8e-20, 6e-27, 'Daily Frequency','Interpreter', 'latex','FontSize',16,'Rotation',90)
+text(f2M*TTFreq*0.85, 1.4e-24, '$f_{TT}$','Interpreter', 'latex','FontSize',16)
 hold off
+set(ax2,'XScale','log');
+set(ax2,'YScale','log');
 ylabel('$g_{B-L}/\sqrt{\hbar c}$','Interpreter', 'latex')
 xlabel('Mass (eV)','Interpreter', 'latex')
-legend('Amplitude Limits', 'Smoothed Limits', 'MICROSCOPE','Shaw et. al.','Zimmermann et. al.','LISA Pathfinder','Interpreter', 'latex')
+legend('','','Amplitude Limits', 'MICROSCOPE','Shaw et. al.','Zimmermann et. al.','LISA Pathfinder','Direct Detection Limits','Interpreter', 'latex')
 set(gca,'FontSize',16);
-set(l,'LineWidth',1.5);
-ylim([5e-27 1e-24])
-xlim([4e-22 1e-17])
+set(l,'LineWidth',1.25);
+set(ll,'LineWidth',2.5);
+set(lll,'LineWidth',1.5);
+set(llll,'LineWidth',1.5);
+set(lllll,'LineWidth',1.5);
+ylim([1e-27 1.1e-24])
+xlim([4e-22 2e-17])
 grid on
-
+ax2(2) = axes('position',ax2(1).Position,'color','none','XAxisLocation','top','YAxisLocation','right');
+set(ax2(2),'YTickLabel',[]);
+set(ax2(2),'XScale','log');
+set(ax2(2),'YScale','log');
+xlim([4e-22/f2M 2e-17/f2M])
+ylim([5e-27 1e-24])
+xlabel('Frequency (Hz)','Interpreter', 'latex')
+set(gca,'FontSize',16);
+% ax1.Box = 'off';
+ax2(1).Box = 'off';
 %% Histogram Plot
 
 % Remove insanely large chi-squareds
@@ -346,13 +368,13 @@ plot([4 4],[0 500],'k--','LineWidth',1.5)
 hold off
 xlabel('$\chi^2$ Relative to Thermal Noise','Interpreter', 'latex')
 ylabel('Number','Interpreter', 'latex')
-legend('Before Cuts','After Cuts','Threshold','Interpreter', 'latex')
+legend('Without Discarding','With Discarding','Threshold','Interpreter', 'latex')
 set(gca,'FontSize',16);
 grid on
 
 %% Save plots
 
-if(true)
+if(false)
 
     fig2=figure(1);
     set(fig2,'Units','Inches');
@@ -363,7 +385,7 @@ if(true)
     fig2=figure(2);
     set(fig2,'Units','Inches');
     pos = get(fig2,'Position');
-    set(fig2,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+    set(fig2,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)+0.35])
     print(fig2,'ULDM_AmpLimits.pdf','-dpdf','-r1200')
 
     fig2=figure(3);
