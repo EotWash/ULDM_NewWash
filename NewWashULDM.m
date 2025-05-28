@@ -15,8 +15,8 @@ r = 3.77e-2/2; % Lever-arm (m)
 TTFreq = 0.457120e-3; % Turn table frequency (Hz)
 wTT = 2*pi*TTFreq; % Turn table frequency (rad*Hz)
 
-aDM = 1e-25/9.73e-19; % Torque to g_dm conversion for Be-Al
-f2M = 4.1e-19/1e-4; % Frequency to mass conversion
+aDM = 1.54e-7; % Torque to g_dm conversion for Be-Al (1/(N m))
+f2M = 4.135e-15; % Frequency to mass conversion (eV/Hz)
 
 % Thermal noise
 thermAmp = abs(sqrt(4*kb*T*(kappa/Q).*(1./(2*pi*TTFreq))))*sqrt((2*pi*TTFreq)); 
@@ -26,7 +26,7 @@ thresh = 4;
 
 %% Data loading
 
-if (false)
+if (true)
 
     % Runs to load. Once per turntable cosine amplitude, sine amplitude, 
     % and misfit are calculated in NewWashAnalysis.m then loaded here
@@ -83,22 +83,14 @@ if (false)
     aLISA = inLISA(:,2)/0.428;     
 
     %% 2-sigma cuts
-
-    % Cosine cut
-    unCut = find(and(Cin>prctile(Cin,5),Cin<prctile(Cin,95)));
+   
+    unCut = find(and(and(Cin>prctile(Cin,5),Cin<prctile(Cin,95)),...
+        and(Sin>prctile(Sin,5),Sin<prctile(Sin,95))));
     C = Cin(unCut);
     S = Sin(unCut);
     U = Uin(unCut);
     P = Pin(unCut);
     timFit = timFitin(unCut);
-
-    % Sine cut
-    unCut = find(and(S>prctile(S,5),S<prctile(S,95)));
-    C = C(unCut);
-    S = S(unCut);
-    U = U(unCut);
-    P = P(unCut);
-    timFit = timFit(unCut);
     
     % Sampling frequency
     sampF = 1/(timFit(5)-timFit(4));
@@ -368,7 +360,7 @@ plot([4 4],[0 500],'k--','LineWidth',1.5)
 hold off
 xlabel('$\chi^2$ Relative to Thermal Noise','Interpreter', 'latex')
 ylabel('Number','Interpreter', 'latex')
-legend('Without Discarding','With Discarding','Threshold','Interpreter', 'latex')
+legend('Before Cuts','After Cuts','Threshold','Interpreter', 'latex')
 set(gca,'FontSize',16);
 grid on
 
