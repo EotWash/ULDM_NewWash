@@ -146,6 +146,7 @@ periodMin = 0;
 % Number of periods to fit
 fitPeriods = 1;
 
+% Once per 30 days frequency for section cutting
 monthF = 1/24/3600/30;
 
 % Thermal noise circle
@@ -155,7 +156,7 @@ thermCirc = thermAmp*(cos(thermPhi)+i*sin(thermPhi))+mean(torqFit);
 %% Fits
 
 % Dark matter search frequencies
-dmFreq = linspace(1/24/3600/lenDays,sampF,floor(sampF*24*3600*lenDays))';
+dmFreq = linspace(1/24/3600/lenDays,sampF*2,floor(sampF*24*3600*lenDays*2))';
 
 % Create vectors
 ampDMX = [];
@@ -303,14 +304,14 @@ dmAmpPlot = dmAmp(dmIndex)';
 dmFreqPlot = dmFreq(dmIndex)';
 
 % LISA Pathfinder Limits Shading
-lIndex = find(f2M*fLISA>1.52e-18);
+shadeIn = 1000;
+lIndex = find(fLISA>dmFreq(end-shadeIn));
 aLISAPlot = aLISA(lIndex)';
 fLISAPlot = fLISA(lIndex)';
 
 % Direct Detection Limits
-% smth = movmean(dmAmp,500);
-dmAD = [dmAmp(dmFreq<1.52e-18/f2M); aLISAPlot(fLISAPlot>1.52e-18/f2M)'];
-dmFreqD = [dmFreq(dmFreq<1.52e-18/f2M); fLISAPlot(fLISAPlot>1.52e-18/f2M)'];
+dmAD = [dmAmp(dmFreq<=dmFreq(end-shadeIn)); aLISAPlot(fLISAPlot>dmFreq(end-shadeIn))'];
+dmFreqD = [dmFreq(dmFreq<=dmFreq(end-shadeIn)); fLISAPlot(fLISAPlot>dmFreq(end-shadeIn))'];
 
 figure(2)
 set(gcf,'position',[300,100,1300,700])
@@ -322,9 +323,9 @@ hold on
 l = loglog(f2M*dmFreq, dmAmp); 
 lll = loglog(f2M*mF, mA, '--', f2M*fDEP, aDEP, '--',[2.2e-21 2.2e-21],[1e-27 1.1e-24] ,'--', f2M*fLISA,aLISA,'--');
 llll = loglog(f2M*[1/24/3600 1/24/3600], [1e-28 1.1e-25],'k-.');
-lllll = plot(f2M*[TTFreq/2 TTFreq/2],[1e-24 1.1e-24],'k')
+lllll = plot(f2M*[TTFreq TTFreq],[1e-24 1.1e-24],'k')
 text(3.8e-20, 6e-27, 'Daily Frequency','Interpreter', 'latex','FontSize',16,'Rotation',90)
-text(f2M*TTFreq/2*0.85, 1.4e-24, '$f_{TT}/2$','Interpreter', 'latex','FontSize',16)
+text(f2M*TTFreq*0.85, 1.4e-24, '$f_{TT}$','Interpreter', 'latex','FontSize',16)
 hold off
 set(ax2,'XScale','log');
 set(ax2,'YScale','log');
