@@ -15,18 +15,18 @@ r = 3.77e-2/2; % Lever-arm (m)
 TTFreq = 0.457120e-3; % Turn table frequency (Hz)
 wTT = 2*pi*TTFreq; % Turn table frequency (rad*Hz)
 
-aDM = 1.54e-7; % Torque to g_dm conversion for Be-Al (1/(N m))
+aDM = 1.03e-7; % Torque to g_dm conversion for Be-Al (1/(N m))
 f2M = 4.135e-15; % Frequency to mass conversion (eV/Hz)
 
 % Thermal noise
 thermAmp = abs(sqrt(4*kb*T*(kappa/Q).*(1./(2*pi*TTFreq))))*sqrt((2*pi*TTFreq)); 
 
 % Chi-squared threshold
-thresh = 4;
+thresh = 3.77;
 
 %% Data loading
 
-if (true)
+if (false)
 
     % Runs to load. Once per turntable cosine amplitude, sine amplitude, 
     % and misfit are calculated in NewWashAnalysis.m then loaded here
@@ -35,7 +35,8 @@ if (true)
         "run6903Fits.mat" "run6904Fits.mat" "run6905Fits.mat" "run6923Fits.mat" ...
         "run6925Fits.mat" "run6926Fits.mat" "run6927Fits.mat" "run6930Fits.mat"...
         "run6931Fits.mat" "run6936Fits.mat" "run6939Fits.mat" "run6949Fits.mat"...
-        "run6950Fits.mat"];
+        "run6950Fits.mat" "run6954Fits.mat" "run6955Fits.mat" "run6956Fits.mat"...
+        "run6958Fits.mat" "run6962Fits.mat" "run6964Fits.mat"];
 
     timFitin =[];
     Cin = [];
@@ -49,7 +50,7 @@ if (true)
         in = load(runs(f));
 
         % Chi-squared cut
-        unCut = find(in.out(4,:).^2/(thermAmp^2)/sqrt(length(in.out(4,:))) < thresh);
+        unCut = find(in.out(4,:)/thermAmp < thresh);
 
         % Moved time zero to midnight Jan. 1, 2024
         if f<10            
@@ -61,8 +62,8 @@ if (true)
         % Extract torque amps
         Cin = [Cin detrend(in.out(2,unCut))];
         Sin = [Sin detrend(in.out(3,unCut))];
-        Uin = [Uin in.out(4,unCut).^2/(thermAmp^2)/sqrt(length(in.out(4,:)))];
-        Uraw = [Uraw in.out(4,:).^2/(thermAmp^2)/sqrt(length(in.out(4,:)))];
+        Uin = [Uin in.out(4,unCut)/thermAmp];
+        Uraw = [Uraw in.out(4,:)/thermAmp];
 
         % Pendulum flips
         if or(f<3,and(f>13,f<20))
@@ -137,13 +138,15 @@ end
 lenDays = ceil((timFit(end)-timFit(1))/24/3600);
 
 % Calculate complex torque amplitude
-torqFit = C+i*S;
+torqFit = P.*(C+i*S);
 
 % Minimum number of periods in each cut
 periodMin = 0;
 
 % Number of periods to fit
-fitPeriods = 7;
+fitPeriods = 1;
+
+monthF = 1/24/3600/30;
 
 % Thermal noise circle
 thermPhi = linspace(0,2*pi,100); 
@@ -152,7 +155,7 @@ thermCirc = thermAmp*(cos(thermPhi)+i*sin(thermPhi))+mean(torqFit);
 %% Fits
 
 % Dark matter search frequencies
-dmFreq = linspace(1/24/3600/lenDays*2,sampF*2,floor(0.95*sampF*24*3600*lenDays/2))';
+dmFreq = linspace(1/24/3600/lenDays,sampF,floor(sampF*24*3600*lenDays))';
 
 % Create vectors
 ampDMX = [];
@@ -166,7 +169,7 @@ longS = [];
 
 % Fit for each frequency in vector
 for indexDM = 1:length(dmFreq)
-    
+    indexDM/length(dmFreq)*100
     % Vectors for plotting
     longAmp = [];
     longTim = [];
@@ -174,8 +177,9 @@ for indexDM = 1:length(dmFreq)
     % Fit parameters
     fFitDM = dmFreq(indexDM);
     wFit = 2*pi*fFitDM;
-    fitSamplesDM = floor(sampF/dmFreq(1)/fitPeriods);
-    
+    numPeriods = fitPeriods*(1+indexDM/100);
+%     fitSamplesDM = floor(sampF/fFitDM*numPeriods);
+    fitSamplesDM = floor(sampF/monthF);
     % Create vectors
     CDMX = [];
     SDMX = [];
@@ -195,7 +199,7 @@ for indexDM = 1:length(dmFreq)
             % Cut vectors
             cut = timFit(indexCut)';
             pol = sign(mean(P(indexCut)));
-            y = pol*detrend(abs(torqFit(indexCut)),'constant');        
+            y = torqFit(indexCut)-mean(torqFit(indexCut));        
     
             if not(isempty(cut))                
                 
@@ -212,6 +216,7 @@ for indexDM = 1:length(dmFreq)
     
                 % Linear least squares fitting to basis functions  
                 a = inv(x'*x)*x'*y';
+                a = abs(a);
                 
                 % Calculate number of periods in cut
                 nPeriods = (cut(end)-cut(1))*fFitDM;
@@ -227,13 +232,13 @@ for indexDM = 1:length(dmFreq)
                 end 
             end
         end
-        longAmp = [longAmp y];
+        longAmp = [longAmp (real(y)+imag(y))/2];
         longTim = [longTim cut'];
     end
     
     % Calculate amplitude and uncertainty for each direction
     ampDMX = [ampDMX; sqrt(mean(CDMX)^2+mean(SDMX)^2)];
-    uncDMX = [uncDMX; 1/sqrt(mean(CDMX)^2+mean(SDMX)^2)*sqrt(mean(CDMX)^2*std(CDMX)^2+mean(SDMX)^2*std(SDMX)^2)/sqrt(length(CDMX))];
+    uncDMX = [uncDMX; 1/sqrt(mean(CDMX)^2+mean(SDMX )^2)*sqrt(mean(CDMX)^2*std(CDMX)^2+mean(SDMX)^2*std(SDMX)^2)/sqrt(length(CDMX))];
     ampDMY = [ampDMY; sqrt(mean(CDMY)^2+mean(SDMY)^2)];
     uncDMY = [uncDMY; 1/sqrt(mean(CDMY)^2+mean(SDMY)^2)*sqrt(mean(CDMY)^2*std(CDMY)^2+mean(SDMY)^2*std(SDMY)^2)/sqrt(length(CDMY))];
     ampDMZ = [ampDMZ; sqrt(mean(CDMZ)^2+mean(SDMZ)^2)];
@@ -259,27 +264,28 @@ Rat = 9;
 figure(1)
 set(gcf,'position',[500,200,700,600])
 subplot(1,Rat,[1 Rat-1])
-ll=plot(longTim/3600/24, longAmp*1e18,'.',...
-    [213 213],[-40 40],'k--', [420 420],[-40 40],'k--');
+ll=plot(timFit/3600/24, (real(torqFit)+imag(torqFit))/2*1e18,'.',...
+    [213 213],[-40 40],'k--', [420 420],[-40 40],'k--',[486 486],[-40 40],'k--');
 hold on
 % patch([275 384 384 275], [-20 -20 20 20], [.5 .7 .7], 'LineStyle', 'none', 'FaceAlpha', 0.5)
-text(195, 18, '0$^\circ$','Interpreter', 'latex','FontSize',16)
-text(235, 18, '180$^\circ$','Interpreter', 'latex','FontSize',16)
-text(390, 18, '180$^\circ$','Interpreter', 'latex','FontSize',16)
-text(455, 18, '0$^\circ$','Interpreter', 'latex','FontSize',16)
+text(195, 30, '0$^\circ$','Interpreter', 'latex','FontSize',16)
+text(235, 30, '180$^\circ$','Interpreter', 'latex','FontSize',16)
+text(390, 30, '180$^\circ$','Interpreter', 'latex','FontSize',16)
+text(455, 30, '0$^\circ$','Interpreter', 'latex','FontSize',16)
+text(520, 30, '$180^\circ$','Interpreter', 'latex','FontSize',16)
 hold off
 ylabel('Torque (aN m)','Interpreter', 'latex')
 xlabel('Time (days)','Interpreter', 'latex')
 set(gca,'FontSize',18);
 set(ll,'MarkerSize',16);
 set(ll,'LineWidth',2);
-ylim([-20 20])
+ylim([-40 40])
 xlim([0.99*min(timFit/3600/24) 1.01*max(timFit/3600/24)])
 grid on
 subplot(1,Rat,Rat)
-[n,x] = hist(longAmp*1e18);
+[n,x] = hist((real(torqFit)+imag(torqFit))/2*1e18);
 barh(x,n,1);
-ylim([-20 20])
+ylim([-40 40])
 set(gca,'YTickLabel',[])
 set(gca,'XTickLabel',[])
 set(gca,'XGrid','off','YGrid','on')
@@ -302,8 +308,8 @@ aLISAPlot = aLISA(lIndex)';
 fLISAPlot = fLISA(lIndex)';
 
 % Direct Detection Limits
-smth = movmean(dmAmp,500);
-dmAD = [smth(dmFreq<1.52e-18/f2M); aLISAPlot(fLISAPlot>1.52e-18/f2M)'];
+% smth = movmean(dmAmp,500);
+dmAD = [dmAmp(dmFreq<1.52e-18/f2M); aLISAPlot(fLISAPlot>1.52e-18/f2M)'];
 dmFreqD = [dmFreq(dmFreq<1.52e-18/f2M); fLISAPlot(fLISAPlot>1.52e-18/f2M)'];
 
 figure(2)
@@ -311,24 +317,22 @@ set(gcf,'position',[300,100,1300,700])
 t = tiledlayout(1,1);
 ax2 = axes(t);
 patch([f2M*dmFreqD' fliplr(f2M*dmFreqD')], [dmAD' 1.1e-24*ones(size(dmAD'))], [.7 .7 .7], 'LineStyle', 'none', 'FaceAlpha', 0.5) 
-patch([[3.58e-22 2.2e-21] [2.2e-21 3.58e-22]], [8.6e-26 8.6e-26 1e-27 1e-27], [0.8 0.8 0.8], 'LineStyle', 'none', 'FaceAlpha', 0.2)
+patch([[3.58e-22 2.2e-21] [2.2e-21 3.58e-22]], [2e-25 2e-25 1e-27 1e-27], [0.8 0.8 0.8], 'LineStyle', 'none', 'FaceAlpha', 0.2)
 hold on
 l = loglog(f2M*dmFreq, dmAmp); 
 lll = loglog(f2M*mF, mA, '--', f2M*fDEP, aDEP, '--',[2.2e-21 2.2e-21],[1e-27 1.1e-24] ,'--', f2M*fLISA,aLISA,'--');
-ll = loglog(f2M*dmFreqD, dmAD,'color',[0 0.28 0.47]);
 llll = loglog(f2M*[1/24/3600 1/24/3600], [1e-28 1.1e-25],'k-.');
-lllll = plot(f2M*[TTFreq TTFreq],[1e-24 1.1e-24],'k')
+lllll = plot(f2M*[TTFreq/2 TTFreq/2],[1e-24 1.1e-24],'k')
 text(3.8e-20, 6e-27, 'Daily Frequency','Interpreter', 'latex','FontSize',16,'Rotation',90)
-text(f2M*TTFreq*0.85, 1.4e-24, '$f_{TT}$','Interpreter', 'latex','FontSize',16)
+text(f2M*TTFreq/2*0.85, 1.4e-24, '$f_{TT}/2$','Interpreter', 'latex','FontSize',16)
 hold off
 set(ax2,'XScale','log');
 set(ax2,'YScale','log');
 ylabel('$g_{B-L}/\sqrt{\hbar c}$','Interpreter', 'latex')
 xlabel('Mass (eV)','Interpreter', 'latex')
-legend('','','Amplitude Limits', 'MICROSCOPE','Shaw et. al.','Zimmermann et. al.','LISA Pathfinder','Direct Detection Limits','Interpreter', 'latex')
+legend('','','Amplitude Limits', 'MICROSCOPE','Shaw et. al.','Zimmermann et. al.','LISA Pathfinder','Interpreter', 'latex')
 set(gca,'FontSize',16);
 set(l,'LineWidth',1.25);
-set(ll,'LineWidth',2.5);
 set(lll,'LineWidth',1.5);
 set(llll,'LineWidth',1.5);
 set(lllll,'LineWidth',1.5);
@@ -356,7 +360,7 @@ figure(3)
 bar(XU,(NUr),'FaceAlpha',0.5)
 hold on
 bar(XU,(NU),'FaceAlpha',0.5)
-plot([4 4],[0 500],'k--','LineWidth',1.5)
+plot([thresh thresh],[0 500],'k--','LineWidth',1.5)
 hold off
 xlabel('$\chi^2$ Relative to Thermal Noise','Interpreter', 'latex')
 ylabel('Number','Interpreter', 'latex')
