@@ -26,7 +26,7 @@ thresh = 3.77;
 
 %% Data loading
 
-if (false)
+if (true)
 
     % Runs to load. Once per turntable cosine amplitude, sine amplitude, 
     % and misfit are calculated in NewWashAnalysis.m then loaded here
@@ -156,7 +156,7 @@ thermCirc = thermAmp*(cos(thermPhi)+i*sin(thermPhi))+mean(torqFit);
 %% Fits
 
 % Dark matter search frequencies
-dmFreq = linspace(1/24/3600/lenDays,sampF*2,floor(sampF*24*3600*lenDays*2))';
+dmFreq = linspace(1/24/3600/lenDays,sampF*2,floor(sampF*24*3600*lenDays))';
 
 % Create vectors
 ampDMX = [];
@@ -278,7 +278,7 @@ hold off
 ylabel('Torque (aN m)','Interpreter', 'latex')
 xlabel('Time (days)','Interpreter', 'latex')
 set(gca,'FontSize',18);
-set(ll,'MarkerSize',16);
+set(ll,'MarkerSize',10);
 set(ll,'LineWidth',2);
 ylim([-40 40])
 xlim([0.99*min(timFit/3600/24) 1.01*max(timFit/3600/24)])
@@ -310,42 +310,49 @@ aLISAPlot = aLISA(lIndex)';
 fLISAPlot = fLISA(lIndex)';
 
 % Direct Detection Limits
+smth = movmean(dmAmp,1000);
 dmAD = [dmAmp(dmFreq<=dmFreq(end-shadeIn)); aLISAPlot(fLISAPlot>dmFreq(end-shadeIn))'];
 dmFreqD = [dmFreq(dmFreq<=dmFreq(end-shadeIn)); fLISAPlot(fLISAPlot>dmFreq(end-shadeIn))'];
 
 figure(2)
-set(gcf,'position',[300,100,1300,700])
+set(gcf,'Position',[300,100,1100,600])
 t = tiledlayout(1,1);
+pos = get(t,'Position');
+shift = [0 0 0.05 -0.065];
+set(t, 'Position', pos + shift)
 ax2 = axes(t);
 patch([f2M*dmFreqD' fliplr(f2M*dmFreqD')], [dmAD' 1.1e-24*ones(size(dmAD'))], [.7 .7 .7], 'LineStyle', 'none', 'FaceAlpha', 0.5) 
-patch([[3.58e-22 2.2e-21] [2.2e-21 3.58e-22]], [2e-25 2e-25 1e-27 1e-27], [0.8 0.8 0.8], 'LineStyle', 'none', 'FaceAlpha', 0.2)
+patch([[1e-22 2.2e-21] [2.2e-21 1e-22]], [2e-25 2e-25 1e-27 1e-27], [0.8 0.8 0.8], 'LineStyle', 'none', 'FaceAlpha', 0.2)
+patch([[3e-17 8e-17] [8e-17 3e-17]], [2e-24 2e-24 2.75e-25 2.75e-25], [0.7 0.7 0.7], 'LineStyle', 'none', 'FaceAlpha', 0.5)
 hold on
 l = loglog(f2M*dmFreq, dmAmp); 
+ll = loglog(f2M*dmFreq, smth,'color',[0 0.28 0.47]);
 lll = loglog(f2M*mF, mA, '--', f2M*fDEP, aDEP, '--',[2.2e-21 2.2e-21],[1e-27 1.1e-24] ,'--', f2M*fLISA,aLISA,'--');
 llll = loglog(f2M*[1/24/3600 1/24/3600], [1e-28 1.1e-25],'k-.');
 lllll = plot(f2M*[TTFreq TTFreq],[1e-24 1.1e-24],'k')
-text(3.8e-20, 6e-27, 'Daily Frequency','Interpreter', 'latex','FontSize',16,'Rotation',90)
+text(3.8e-20, 2e-27, 'Daily Frequency','Interpreter', 'latex','FontSize',16,'Rotation',90)
 text(f2M*TTFreq*0.85, 1.4e-24, '$f_{TT}$','Interpreter', 'latex','FontSize',16)
 hold off
 set(ax2,'XScale','log');
 set(ax2,'YScale','log');
 ylabel('$g_{B-L}/\sqrt{\hbar c}$','Interpreter', 'latex')
 xlabel('Mass (eV)','Interpreter', 'latex')
-legend('','','Amplitude Limits', 'MICROSCOPE','Shaw et. al.','Zimmermann et. al.','LISA Pathfinder','Interpreter', 'latex')
+legend('','','','Amplitude Limits','Smoothed Limits', 'MICROSCOPE','Shaw et. al.','Zimmermann et. al.','LISA Pathfinder','Interpreter', 'latex')
 set(gca,'FontSize',16);
 set(l,'LineWidth',1.25);
+set(ll,'LineWidth',2.5);
 set(lll,'LineWidth',1.5);
 set(llll,'LineWidth',1.5);
 set(lllll,'LineWidth',1.5);
 ylim([1e-27 1.1e-24])
-xlim([4e-22 2e-17])
+xlim([1.3e-22 8e-17])
 grid on
-ax2(2) = axes('position',ax2(1).Position,'color','none','XAxisLocation','top','YAxisLocation','right');
+ax2(2) = axes('position',pos + shift,'color','none','XAxisLocation','top','YAxisLocation','right');
 set(ax2(2),'YTickLabel',[]);
 set(ax2(2),'XScale','log');
 set(ax2(2),'YScale','log');
-xlim([4e-22/f2M 2e-17/f2M])
-ylim([5e-27 1e-24])
+xlim([1.3e-22/f2M 8e-17/f2M])
+ylim([1e-27 1.1e-24])
 xlabel('Frequency (Hz)','Interpreter', 'latex')
 set(gca,'FontSize',16);
 % ax1.Box = 'off';
@@ -378,13 +385,13 @@ if(false)
     pos = get(fig2,'Position');
     set(fig2,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
     print(fig2,'ULDM_TimeSeries.pdf','-dpdf','-r1200')
-
+%%
     fig2=figure(2);
     set(fig2,'Units','Inches');
     pos = get(fig2,'Position');
-    set(fig2,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)+0.35])
+    set(fig2,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3) pos(4)])
     print(fig2,'ULDM_AmpLimits.pdf','-dpdf','-r1200')
-
+%%
     fig2=figure(3);
     set(fig2,'Units','Inches');
     pos = get(fig2,'Position');
