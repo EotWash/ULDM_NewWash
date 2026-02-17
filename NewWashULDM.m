@@ -12,7 +12,10 @@ thetaCalib = 3/300/8; % Autocollimator calibration (rad/(Diff/Sum))
 m = 38.72e-3/2; % Mass (kg)
 r = 3.77e-2/2; % Lever-arm (m)
 
-TTFreq = 0.457120e-3; % Turn table frequency (Hz)
+sidDay = 86164.0905; % Sidereal day (s)
+
+% TTFreq = 0.457120e-3; % Turn table frequency (Hz)
+TTFreq = 0.4564e-3; % Turn table frequency (Hz)
 wTT = 2*pi*TTFreq; % Turn table frequency (rad*Hz)
 
 aDM = 1.03e-7; % Torque to g_dm conversion for Be-Al (1/(N m))
@@ -22,7 +25,7 @@ f2M = 4.135e-15; % Frequency to mass conversion (eV/Hz)
 thermAmp = abs(sqrt(4*kb*T*(kappa/Q).*(1./(2*pi*TTFreq))))*sqrt((2*pi*TTFreq)); 
 
 % Chi-squared threshold
-thresh = 3.77;
+thresh = 3.9794;
 
 %% Data loading
 
@@ -36,7 +39,9 @@ if (true)
         "run6925Fits.mat" "run6926Fits.mat" "run6927Fits.mat" "run6930Fits.mat"...
         "run6931Fits.mat" "run6936Fits.mat" "run6939Fits.mat" "run6949Fits.mat"...
         "run6950Fits.mat" "run6954Fits.mat" "run6955Fits.mat" "run6956Fits.mat"...
-        "run6958Fits.mat" "run6962Fits.mat" "run6964Fits.mat"];
+        "run6958Fits.mat" "run6962Fits.mat" "run6964Fits.mat" "run6982Fits.mat"...
+        "run6984Fits.mat", "run6985Fits.mat", "run6986Fits.mat", "run6987Fits.mat", "run6988Fits.mat"];
+    runP = [1 1 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1 1]; % 1 if 0 deg, 0 if 180 deg
 
     timFitin =[];
     Cin = [];
@@ -57,6 +62,8 @@ if (true)
             timFitin = [timFitin mod(in.out(1,unCut),31556926)]; % 2024 runs
         else
             timFitin = [timFitin mod(in.out(1,unCut),31556926)+31556926]; % 2025 runs
+            % timFitin = [timFitin mod(in.out(1,unCut),31556926)]; % 2025 runs
+
         end
 
         % Extract torque amps
@@ -66,10 +73,10 @@ if (true)
         Uraw = [Uraw in.out(4,:)/thermAmp];
 
         % Pendulum flips
-        if or(f<3,and(f>13,f<20))
-            Pin = [Pin in.out(4,unCut)*0+1]; % 0 Deg
-        else 
-            Pin = [Pin in.out(4,unCut)*0-1]; % 180 Deg
+        if runP(f) %0 degrees
+            Pin = [Pin in.out(4,unCut)*0+1];
+        else %180 degrees
+            Pin = [Pin in.out(4,unCut)*0-1];
         end
     end
     
@@ -94,11 +101,11 @@ if (true)
     timFit = timFitin(unCut);
     
     % Sampling frequency
-    sampF = 1/(timFit(5)-timFit(4));
+    sampF = 1/(mode(round(diff(timFit),3)));
 
     % Loading in X basis funtions outputted from dmVect.py
     rawX=load('xVectMin.out');
-    xSampF = 1/(rawX(2,1)-rawX(1,1))/3600/24;
+    xSampF = 1/mode(round(diff(rawX(:,1)),8))/sidDay;
     timX=decimate(rawX(:,1),floor(xSampF/sampF));
     inX=decimate(rawX(:,2),floor(xSampF/sampF));
     outX=decimate(rawX(:,3),floor(xSampF/sampF));
@@ -110,7 +117,7 @@ if (true)
 
     % Loading in Y basis funtions outputted from dmVect.py
     rawY=load('yVectMin.out');
-    ySampF = 1/(rawY(2,1)-rawY(1,1))/3600/24;
+    ySampF = 1/mode(round(diff(rawY(:,1)),8))/sidDay;
     timY=decimate(rawY(:,1),floor(ySampF/sampF));
     inY=decimate(rawY(:,2),floor(ySampF/sampF));
     outY=decimate(rawY(:,3),floor(ySampF/sampF));    
@@ -122,7 +129,7 @@ if (true)
 
     % Loading in Z basis funtions outputted from dmVect.py
     rawZ=load('zVectMin.out');
-    zSampF = 1/(rawZ(2,1)-rawZ(1,1))/3600/24;
+    zSampF = 1/(rawZ(2,1)-rawZ(1,1))/sidDay;
     timZ=decimate(rawZ(:,1),floor(zSampF/sampF));
     inZ=decimate(rawZ(:,2),floor(zSampF/sampF));
     outZ=decimate(rawZ(:,3),floor(zSampF/sampF));
@@ -133,9 +140,8 @@ if (true)
     outZ = [outZ; outZ]; 
 
 end
-
 % Length of days
-lenDays = ceil((timFit(end)-timFit(1))/24/3600);
+lenDays = ceil((timFit(end)-timFit(1))/sidDay);
 
 % Calculate complex torque amplitude
 torqFit = P.*(C+i*S);
@@ -147,7 +153,7 @@ periodMin = 0;
 fitPeriods = 1;
 
 % Once per 30 days frequency for section cutting
-monthF = 1/24/3600/30;
+monthF = 1/sidDay/30;
 
 % Thermal noise circle
 thermPhi = linspace(0,2*pi,100); 
@@ -156,7 +162,7 @@ thermCirc = thermAmp*(cos(thermPhi)+i*sin(thermPhi))+mean(torqFit);
 %% Fits
 
 % Dark matter search frequencies
-dmFreq = linspace(1/24/3600/lenDays,sampF*2,floor(sampF*24*3600*lenDays))';
+dmFreq = linspace(1/sidDay/lenDays,sampF*2,floor(sampF*sidDay*lenDays))';
 
 % Create vectors
 ampDMX = [];
@@ -170,7 +176,7 @@ longS = [];
 
 % Fit for each frequency in vector
 for indexDM = 1:length(dmFreq)
-    indexDM/length(dmFreq)*100
+    indexDM/length(dmFreq)*100 %Percent finished
     % Vectors for plotting
     longAmp = [];
     longTim = [];
@@ -207,7 +213,7 @@ for indexDM = 1:length(dmFreq)
                 % Sync basis function and data
                 basisIndex = [];
                 for cutX = cut'
-                    basisIndex = [basisIndex find(floor(timX-cutX/24/3600)==0,1)];
+                    basisIndex = [basisIndex find(floor(timX-cutX/sidDay)==0,1)];
                 end
                                
                 % Design matrix
@@ -265,7 +271,7 @@ Rat = 9;
 figure(1)
 set(gcf,'position',[500,200,700,600])
 subplot(1,Rat,[1 Rat-1])
-ll=plot(timFit/3600/24, (real(torqFit)+imag(torqFit))/2*1e18,'.',...
+ll=plot(timFit/sidDay, (real(torqFit)+imag(torqFit))/2*1e18,'.',...
     [213 213],[-40 40],'k--', [420 420],[-40 40],'k--',[486 486],[-40 40],'k--');
 hold on
 % patch([275 384 384 275], [-20 -20 20 20], [.5 .7 .7], 'LineStyle', 'none', 'FaceAlpha', 0.5)
@@ -281,7 +287,7 @@ set(gca,'FontSize',18);
 set(ll,'MarkerSize',10);
 set(ll,'LineWidth',2);
 ylim([-40 40])
-xlim([0.99*min(timFit/3600/24) 1.01*max(timFit/3600/24)])
+xlim([0.99*min(timFit/sidDay) 1.01*max(timFit/sidDay)])
 grid on
 subplot(1,Rat,Rat)
 [n,x] = hist((real(torqFit)+imag(torqFit))/2*1e18);
@@ -328,8 +334,8 @@ hold on
 l = loglog(f2M*dmFreq, dmAmp); 
 ll = loglog(f2M*dmFreq, smth,'color',[0 0.28 0.47]);
 lll = loglog(f2M*mF, mA, '--', f2M*fDEP, aDEP, '--',[2.2e-21 2.2e-21],[1e-27 1.1e-24] ,'--', f2M*fLISA,aLISA,'--');
-llll = loglog(f2M*[1/24/3600 1/24/3600], [1e-28 1.1e-25],'k-.');
-lllll = plot(f2M*[TTFreq TTFreq],[1e-24 1.1e-24],'k')
+llll = loglog(f2M*[1/sidDay 1/sidDay], [1e-28 1.1e-25],'k-.');
+lllll = plot(f2M*[TTFreq TTFreq],[1e-24 1.1e-24],'k');
 text(3.8e-20, 2e-27, 'Daily Frequency','Interpreter', 'latex','FontSize',16,'Rotation',90)
 text(f2M*TTFreq*0.85, 1.4e-24, '$f_{TT}$','Interpreter', 'latex','FontSize',16)
 hold off
